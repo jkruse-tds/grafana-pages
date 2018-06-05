@@ -5,7 +5,7 @@ import time
 import requests
 import argparse
 from pprint import pprint
-
+import subprocess
 import os
 from sys import exit
 from prometheus_client import start_http_server, Summary
@@ -42,12 +42,7 @@ class JenkinsCollector(object):
         # Request data from Jenkins
         self._request_data()
         self._buckets.append(["+Inf", 1])
-        #h.add_metric(["pool", "t03_db"], [['4096.0', 1]], [0])
-        #h.add_metric(["pool", "t03_db"], [['+Inf', 1]], [0])
-        #h = HistogramMetricFamily('request_size', 'Time spent processing request', buckets=[['4096.0', 1], ['8192.0', 1], ['16384.0', 1], ['32768.0', 1], ['65536.0', 1], ['131072.0', 1], ['262144.0', 1], ['524288.0', 1], ['1048576.0', 1], ['2097152.0', 1], ["+Inf", 1]], sum_value=4096)
         h.add_metric(labels=["zpool_writes", "t03_db"], buckets=self._buckets, sum_value=4096)
-        #self._buckets = []
-
         yield h
 
         duration = time.time() - start
@@ -195,8 +190,12 @@ def main():
         REGISTRY.register(JenkinsCollector(args.jenkins, args.user, args.password, args.insecure))
         start_http_server(port)
         print("Polling {}. Serving at port: {}".format(args.jenkins, port))
+        proc = subprocess.Popen(['python','-u', 'output.py'],stdout=subprocess.PIPE)
         while True:
-            time.sleep(1)
+          for line in proc.stdout.readline():
+            if line != b'':
+              os.write(1, line)
+
     except KeyboardInterrupt:
         print(" Interrupted")
         exit(0)
